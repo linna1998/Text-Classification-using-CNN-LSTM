@@ -5,6 +5,8 @@ np.random.seed(1337)  # for reproducibility
 import sys
 import fileinput
 
+from matplotlib import pyplot as plt
+
 #from keras.preprocessing import sequence
 #from keras.models import Sequential
 from keras.layers import Input, Dense, Dropout, Activation
@@ -21,20 +23,19 @@ from keras import backend as K
 
 # set parameters:
 max_features = 5000
-maxlen = 400
 
 # LSTM
-lstm_output_size = 70
+lstm_output_size = 70  # 70个特征
 
-filters = 64
-kernel_size = 5
-hidden_dims = 250
+filters = 64  # CNN输出，
+kernel_size = 5  # 卷积大小。相邻5个卷积
+hidden_dims = 250  # 最高层，投票神经网络的节点数。可以改小一点
 
 batch_size = 32
 epochs = 15
 margin = 0.6
-theta = lambda t: (K.sign(t) + 1.) / 2.
-loss = lambda y_true, y_pred: -(1 - theta(y_true - margin) * theta(y_pred - margin) - theta(1 - margin - y_true) * theta(1 - margin - y_pred)) * (y_true * K.log(y_pred) + (1 - y_true) * K.log(1 - y_pred))
+# theta = lambda t: (K.sign(t) + 1.) / 2.
+# loss = lambda y_true, y_pred: -(1 - theta(y_true - margin) * theta(y_pred - margin) - theta(1 - margin - y_true) * theta(1 - margin - y_pred)) * (y_true * K.log(y_pred) + (1 - y_true) * K.log(1 - y_pred))
 
 # Load data.
 print('Loading data...')
@@ -43,15 +44,16 @@ BASE_DIR = 'L:/学术/大三/数据挖掘2017/作业二'
 GLOVE_DIR = BASE_DIR + '/glove.6B'  
 TRAIN_DATA_DIR = BASE_DIR + '/train'
 TEST_DATA_DIR = BASE_DIR + '/test'
-MAX_SEQUENCE_LENGTH = 1000
-MAX_NB_WORDS = 20000000
-EMBEDDING_DIM = 50
-VALIDATION_SPLIT = 0.2
+MAX_SEQUENCE_LENGTH = 400  # 300*5000->400 ？？？
+MAX_NB_WORDS = 20000000  # =max features， 只提取句子的前若干个词。我句子小的话，可以改小一点
+# 维数，越大越好&越慢
+EMBEDDING_DIM = 300  # The dimention of the matrix 
+VALIDATION_SPLIT = 0.2  # 验证集切分
 
 # Index the word vectors.
 print('Indexing word vectors.')
 embeddings_index = {}
-f = open(os.path.join(GLOVE_DIR, 'glove.6B.50d.txt'), encoding='UTF-8')
+f = open(os.path.join(GLOVE_DIR, 'glove.6B.300d.txt'), encoding='UTF-8')
 for line in f:
     values = line.split()
     word = values[0]
@@ -65,6 +67,7 @@ print('Processing train text dataset')
 
 texts = []  # list of text samples
 labels = []  # list of label ids
+# 把少的复制了5份，做成均匀的1：1，一共10000的训练集
 train_in = open(os.path.join(TRAIN_DATA_DIR, 'train.in'), encoding='UTF-8')
 train_out = open(os.path.join(TRAIN_DATA_DIR, 'train.out'), encoding='UTF-8')
 for line in train_in:
@@ -85,11 +88,12 @@ print('Found %s unique tokens.' % len(word_index))
 
 data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
 labels = to_categorical(np.asarray(labels))
+x_train = data
+y_train = labels
 
 print('Shape of data tensor:', data.shape)
 print('Shape of label tensor:', labels.shape)
-x_train = data
-y_train = labels
+
 
 # Process test text dataset.
 print('Processing test text dataset')
@@ -142,60 +146,75 @@ embedding_layer = Embedding(nb_words + 1,
 # note that we set trainable = False so as to keep the embeddings fixed
 print('Training model.')
 
-# train a 1D convnet with global maxpoolinnb_wordsg
+## train a 1D convnet with global maxpoolinnb_wordsg
 
-#left model
-model_left = Sequential()
-#model.add(Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32'))
-model_left.add(embedding_layer)
-model_left.add(Conv1D(64, 5, activation='relu'))
-model_left.add(MaxPooling1D(5))
-model_left.add(Conv1D(64,5, activation='relu'))
-model_left.add(MaxPooling1D(5))
-model_left.add(Conv1D(64, 5, activation='relu'))
-#model_left.add(MaxPooling1D(35))
-model_left.add(LSTM(lstm_output_size))
-#model_left.add(Flatten())
+##left model
+#model_left = Sequential()
+##model.add(Input(shape=(MAX_SEQUENCE_LENGTH,), dtype='int32'))
+#model_left.add(embedding_layer)
+#model_left.add(Conv1D(64, 5, activation='relu'))
+#model_left.add(MaxPooling1D(5))
+#model_left.add(Conv1D(64,5, activation='relu'))
+#model_left.add(MaxPooling1D(5))
+#model_left.add(Conv1D(64, 5, activation='relu'))
+##model_left.add(MaxPooling1D(35))
+#model_left.add(LSTM(lstm_output_size))
+##model_left.add(Flatten())
 
-#right model
-model_right = Sequential()
-model_right.add(embedding_layer)
-model_right.add(Conv1D(64, 4, activation='relu'))
-model_right.add(MaxPooling1D(4))
-model_right.add(Conv1D(64, 4, activation='relu'))
-model_right.add(MaxPooling1D(4))
-model_right.add(Conv1D(64, 4, activation='relu'))
-#model_right.add(MaxPooling1D(28))
-model_right.add(LSTM(lstm_output_size))
-#model_right.add(Flatten())
+##right model
+#model_right = Sequential()
+#model_right.add(embedding_layer)
+#model_right.add(Conv1D(64, 4, activation='relu'))
+#model_right.add(MaxPooling1D(4))
+#model_right.add(Conv1D(64, 4, activation='relu'))
+#model_right.add(MaxPooling1D(4))
+#model_right.add(Conv1D(64, 4, activation='relu'))
+##model_right.add(MaxPooling1D(28))
+#model_right.add(LSTM(lstm_output_size))
+##model_right.add(Flatten())
 
-#third model
-model_3 = Sequential()
-model_3.add(embedding_layer)
-model_3.add(Conv1D(64, 6, activation='relu'))
-model_3.add(MaxPooling1D(3))
-model_3.add(Conv1D(64, 6, activation='relu'))
-model_3.add(MaxPooling1D(3))
-model_3.add(Conv1D(64, 6, activation='relu'))
-#model_3.add(MaxPooling1D(30))
-model_3.add(LSTM(lstm_output_size))
-#model_3.add(Flatten())
-merged = Merge([model_left, model_right,model_3], mode='concat') #merge
+##third model
+
+#merged = Merge([model_left, model_right,model_3], mode='concat') #merge
+#model = Sequential()
+#model.add(merged) # add merge
 model = Sequential()
-model.add(merged) # add merge
-#model.add(Dense(128, activation='tanh'))
+#model.add(embedding_layer)
+model.add(Embedding(nb_words+1,
+          EMBEDDING_DIM,
+          input_length=MAX_SEQUENCE_LENGTH))
+
+# model.add(Dropout(0.2))
+model.add(Conv1D(64, 6, activation='relu'))
+model.add(MaxPooling1D(3))
+model.add(Conv1D(64, 6, activation='relu'))
+model.add(MaxPooling1D(3))
+model.add(Conv1D(64, 6, activation='relu'))
+model.add(MaxPooling1D(30))
+model.add(LSTM(lstm_output_size))
+##model.add(Flatten())
+##model.add(Dense(128, activation='tanh'))
 model.add(Dense(hidden_dims))
-model.add(Dropout(0.2))
+# model.add(Dropout(0.2))
 #model.add(Activation('relu'))
 #model.add(Dense(len(labels_index), activation='sigmoid'))
 model.add(Dense(2, activation='sigmoid'))  # len(labels_index)=2
 model.compile(loss='binary_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
-model.fit(x_train, y_train,
+history = model.fit(x_train, y_train,
           batch_size=batch_size,
           nb_epoch=epochs,
           validation_data=(x_test, y_test))
+
+# 展示训练的过程
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('model train vs validataion loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'validation'], loc='upper right')
+plt.show()
 
 score, acc = model.evaluate(x_test, y_test,
                             batch_size=batch_size)
