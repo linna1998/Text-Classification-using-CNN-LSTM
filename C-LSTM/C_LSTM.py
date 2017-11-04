@@ -62,56 +62,53 @@ for line in f:
 f.close()
 print('Found %s word vectors.' % len(embeddings_index))
 
-# Process train text dataset.
-print('Processing train text dataset')
-
-texts = []  # list of text samples
-labels = []  # list of label ids
-# 把少的复制了5份，做成均匀的1：1，一共10000的训练集
-train_in = open(os.path.join(TRAIN_DATA_DIR, 'train.in'), encoding='UTF-8')
-train_out = open(os.path.join(TRAIN_DATA_DIR, 'train.out'), encoding='UTF-8')
-for line in train_in:
-    texts.append(line)
-train_in.close()
-for line in train_out:
-    labels.append(line)
-train_out.close()
-print('Found %s texts.' % len(texts))
-
-# Vectorize the train text samples into a 2D integer tensor
-tokenizer = Tokenizer(nb_words=MAX_NB_WORDS)
-tokenizer.fit_on_texts(texts)
-sequences = tokenizer.texts_to_sequences(texts)
-
-word_index = tokenizer.word_index
-print('Found %s unique tokens.' % len(word_index))
-
-data = pad_sequences(sequences, maxlen=MAX_SEQUENCE_LENGTH)
-labels = to_categorical(np.asarray(labels))
-x_train = data
-y_train = labels
-
-print('Shape of data tensor:', data.shape)
-print('Shape of label tensor:', labels.shape)
-
-
 # Process test text dataset.
 print('Processing test text dataset')
 
-texts1 = []  # list of text samples
-labels1 = []  # list of label ids
-
+test_texts = []  # list of text samples
+test_labels = []  # list of label ids
 test_in = open(os.path.join(TEST_DATA_DIR, 'test.in'), encoding='UTF-8')
 test_out = open(os.path.join(TEST_DATA_DIR, 'test.out'), encoding='UTF-8')
 for line in test_in:
-    texts1.append(line)
+    test_texts.append(line)
 test_in.close()
 for line in test_out:
-    labels1.append(line)
+    test_labels.append(line)
 test_out.close()
-print('Found %s texts.' % len(texts1))
+print('Found %s texts.' % len(test_texts))
 
 # finally, vectorize the text samples into a 2D integer tensor
+test_tokenizer = Tokenizer(nb_words=MAX_NB_WORDS)
+test_tokenizer.fit_on_texts(test_texts)
+test_sequences = test_tokenizer.texts_to_sequences(test_texts)
+
+test_word_index = test_tokenizer.word_index
+print('Found %s unique tokens.' % len(test_word_index))
+
+test_data = pad_sequences(test_sequences, maxlen=MAX_SEQUENCE_LENGTH)
+test_labels = to_categorical(np.asarray(test_labels))
+x_test = test_data
+y_test = test_labels
+
+#def build_model(i):
+# Process train1 text dataset.
+print('Processing train1 text dataset')
+
+texts1 = []  # list of text samples
+labels1 = []  # list of label ids
+# 1000:5000的训练集 train
+# 做成1000:1000的训练集 chosen_train1
+train1_in = open(os.path.join(TRAIN_DATA_DIR, 'chosen_train1.in'), encoding='UTF-8')
+train1_out = open(os.path.join(TRAIN_DATA_DIR, 'chosen_train1.out'), encoding='UTF-8')
+for line in train1_in:
+    texts1.append(line)
+train1_in.close()
+for line in train1_out:
+    labels1.append(line)
+train1_out.close()
+print('Found %s texts.' % len(texts1))
+#对的还没有随机去做QAQ
+# Vectorize the train text samples into a 2D integer tensor
 tokenizer1 = Tokenizer(nb_words=MAX_NB_WORDS)
 tokenizer1.fit_on_texts(texts1)
 sequences1 = tokenizer1.texts_to_sequences(texts1)
@@ -121,30 +118,88 @@ print('Found %s unique tokens.' % len(word_index1))
 
 data1 = pad_sequences(sequences1, maxlen=MAX_SEQUENCE_LENGTH)
 labels1 = to_categorical(np.asarray(labels1))
-x_test = data1
-y_test = labels1
+x_train1 = data1
+y_train1 = labels1
 
-print('Preparing embedding matrix.')
+print('Shape of data1 tensor:', data1.shape)
+print('Shape of label1 tensor:', labels1.shape)
+
+print('Preparing embedding matrix1.')
 # prepare embedding matrix
-nb_words = min(MAX_NB_WORDS, len(word_index))
-embedding_matrix = np.zeros((nb_words + 1, EMBEDDING_DIM))
-for word, i in word_index.items():
+nb_words1 = min(MAX_NB_WORDS, len(word_index1))
+embedding_matrix1 = np.zeros((nb_words1 + 1, EMBEDDING_DIM))
+for word, i in word_index1.items():
     if i > MAX_NB_WORDS:
         continue
-    embedding_vector = embeddings_index.get(word)
-    if embedding_vector is not None:
+    embedding_vector1 = embeddings_index.get(word)
+    if embedding_vector1 is not None:
         # words not found in embedding index will be all-zeros.
-        embedding_matrix[i] = embedding_vector # word_index to word_embedding_vector ,<20000(nb_words)
-print('Prepared embedding matrix.')
+        embedding_matrix1[i] = embedding_vector1 # word_index to word_embedding_vector1 ,<20000(nb_words)
+
+print('Prepared embedding matrix1.')
 
 # load pre-trained word embeddings into an Embedding layer
-embedding_layer = Embedding(nb_words + 1,
+embedding_layer1 = Embedding(nb_words1 + 1,
                             EMBEDDING_DIM,
                             input_length=MAX_SEQUENCE_LENGTH,
-                            weights=[embedding_matrix],
+                            weights=[embedding_matrix1],
                             trainable=False)
 # note that we set trainable = False so as to keep the embeddings fixed
-print('Training model.')
+#    return train1_in, train1_out
+
+# Process train2 text dataset.
+print('Processing train2 text dataset')
+
+texts2 = []  # list of text samples
+labels2 = []  # list of label ids
+# 1000:1000左右的训练集 chosen_train2
+train2_in = open(os.path.join(TRAIN_DATA_DIR, 'chosen_train2.in'), encoding='UTF-8')
+train2_out = open(os.path.join(TRAIN_DATA_DIR, 'chosen_train2.out'), encoding='UTF-8')
+for line in train2_in:
+    texts2.append(line)
+train2_in.close()
+for line in train2_out:
+    labels2.append(line)
+train2_out.close()
+print('Found %s texts.' % len(texts2))
+
+# Vectorize the train text samples into a 2D integer tensor
+tokenizer2 = Tokenizer(nb_words=MAX_NB_WORDS)
+tokenizer2.fit_on_texts(texts2)
+sequences2 = tokenizer2.texts_to_sequences(texts2)
+
+word_index2 = tokenizer2.word_index
+print('Found %s unique tokens.' % len(word_index2))
+
+data2 = pad_sequences(sequences2, maxlen=MAX_SEQUENCE_LENGTH)
+labels2 = to_categorical(np.asarray(labels2))
+x_train2 = data2
+y_train2 = labels2
+
+print('Shape of data2 tensor:', data2.shape)
+print('Shape of label2 tensor:', labels2.shape)
+
+print('Preparing embedding matrix2.')
+# prepare embedding matrix
+nb_words2 = min(MAX_NB_WORDS, len(word_index2))
+embedding_matrix2 = np.zeros((nb_words2 + 1, EMBEDDING_DIM))
+for word, i in word_index2.items():
+    if i > MAX_NB_WORDS:
+        continue
+    embedding_vector2 = embeddings_index.get(word)
+    if embedding_vector2 is not None:
+        # words not found in embedding index will be all-zeros.
+        embedding_matrix2[i] = embedding_vector2 # word_index to word_embedding_vector2 ,<20000(nb_words)
+
+print('Prepared embedding matrix2.')
+
+# load pre-trained word embeddings into an Embedding layer
+embedding_layer2 = Embedding(nb_words2 + 1,
+                            EMBEDDING_DIM,
+                            input_length=MAX_SEQUENCE_LENGTH,
+                            weights=[embedding_matrix2],
+                            trainable=False)
+# note that we set trainable = False so as to keep the embeddings fixed
 
 ## train a 1D convnet with global maxpoolinnb_wordsg
 
@@ -178,36 +233,99 @@ print('Training model.')
 #merged = Merge([model_left, model_right,model_3], mode='concat') #merge
 #model = Sequential()
 #model.add(merged) # add merge
-model = Sequential()
+#model = Sequential()
 #model.add(embedding_layer)
-model.add(Embedding(nb_words+1,
-          EMBEDDING_DIM,
-          input_length=MAX_SEQUENCE_LENGTH))
+#model.add(Embedding(nb_words+1,
+#        EMBEDDING_DIM,
+#        input_length=MAX_SEQUENCE_LENGTH))
 
-# model.add(Dropout(0.2))
-model.add(Conv1D(64, 6, activation='relu'))
-model.add(MaxPooling1D(3))
-model.add(Conv1D(64, 6, activation='relu'))
-model.add(MaxPooling1D(3))
-model.add(Conv1D(64, 6, activation='relu'))
-model.add(MaxPooling1D(30))
-model.add(LSTM(lstm_output_size))
-##model.add(Flatten())
-##model.add(Dense(128, activation='tanh'))
-model.add(Dense(hidden_dims))
-# model.add(Dropout(0.2))
-#model.add(Activation('relu'))
-#model.add(Dense(len(labels_index), activation='sigmoid'))
-model.add(Dense(2, activation='sigmoid'))  # len(labels_index)=2
-model.compile(loss='binary_crossentropy',
+## model.add(Dropout(0.2))
+#model.add(Conv1D(64, 6, activation='relu'))
+#model.add(MaxPooling1D(3))
+#model.add(Conv1D(64, 6, activation='relu'))
+#model.add(MaxPooling1D(3))
+#model.add(Conv1D(64, 6, activation='relu'))
+#model.add(MaxPooling1D(30))
+#model.add(LSTM(lstm_output_size))
+###model.add(Flatten())
+###model.add(Dense(128, activation='tanh'))
+#model.add(Dense(hidden_dims))
+## model.add(Dropout(0.2))
+##model.add(Activation('relu'))
+##model.add(Dense(len(labels_index), activation='sigmoid'))
+#model.add(Dense(2, activation='sigmoid'))  # len(labels_index)=2
+
+print('Training model1.')
+model1 = Sequential()
+model1.add(embedding_layer1)
+model1.add(Dropout(0.25))
+model1.add(Conv1D(filters,
+                 kernel_size,
+                 padding='valid',
+                 activation='relu',
+                 strides=1))
+model1.add(MaxPooling1D(pool_size=5))
+model1.add(LSTM(lstm_output_size))
+model1.add(Dense(2))
+model1.add(Activation('sigmoid'))
+model1.compile(loss='binary_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
-history = model.fit(x_train, y_train,
+history1 = model1.fit(x_train1, y_train1,
           batch_size=batch_size,
           nb_epoch=epochs,
           validation_data=(x_test, y_test))
 
-# 展示训练的过程
+print('Training model2.')
+model2 = Sequential()
+model2.add(embedding_layer2)
+model2.add(Dropout(0.25))
+model2.add(Conv1D(filters,
+                 kernel_size,
+                 padding='valid',
+                 activation='relu',
+                 strides=1))
+model2.add(MaxPooling1D(pool_size=5))
+model2.add(LSTM(lstm_output_size))
+model2.add(Dense(2))
+model2.add(Activation('sigmoid'))
+model2.compile(loss='binary_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+history2 = model2.fit(x_train2, y_train2,
+          batch_size=batch_size,
+          nb_epoch=epochs,
+          validation_data=(x_test, y_test))
+
+print('Merging model.')
+merged = Merge([model1, model2], mode='concat') #merge
+model = Sequential()
+model.add(merged) # add merge
+model.add(Dense(hidden_dims))
+model.add(Dropout(0.2))
+model.add(Dense(2, activation='sigmoid'))
+model.compile(loss='binary_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy'])
+
+## 现在history展示的是model1的训练
+## 怎么做一个model1-model10完的投票？不知道。。。
+## 能不能写成一个函数？不知道。。。
+##可能是merge的时候要求层数维数相同
+##而之前我天真的按照模5的余数在做，于是并没有能够merge到一起 QAQ
+##决定再批量出来一堆正好1000：1000的数据集23333
+#啊啊啊这里对合并之后的model要用什么去训练啊啊啊QAQ
+history = model.fit(x_train1, y_train1,
+          batch_size=batch_size,
+          nb_epoch=epochs,
+          validation_data=(x_test, y_test))
+
+score, acc = model.evaluate(x_test, y_test,
+                            batch_size=batch_size)
+print('Test score:', score)
+print('Test accuracy:', acc)
+
+# 展示训练的过程 loss图
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.title('model train vs validataion loss')
@@ -216,7 +334,11 @@ plt.xlabel('epoch')
 plt.legend(['train', 'validation'], loc='upper right')
 plt.show()
 
-score, acc = model.evaluate(x_test, y_test,
-                            batch_size=batch_size)
-print('Test score:', score)
-print('Test accuracy:', acc)
+# 展示训练的过程，accuracy图
+plt.plot(history.history['acc'])
+plt.plot(history.history['val_acc'])
+plt.title('model train vs validataion acc')
+plt.ylabel('acc')
+plt.xlabel('epoch')
+plt.legend(['train', 'validation'], loc='upper right')
+plt.show()
