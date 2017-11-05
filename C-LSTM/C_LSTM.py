@@ -24,93 +24,7 @@ from keras.preprocessing.sequence import pad_sequences
 from keras.utils.np_utils import to_categorical
 from keras.layers.normalization import BatchNormalization
 #from keras.layers.noise import GaussianNoise
-
-# SMOTE code from
-# https://github.com/MLevinson-OR/SMOTE/blob/master/src/SMOTE.py
-# it can add neighbour noise to the dataset
-# Error
-def pca(X):
-    '''reduce data'''
-    pca = PCA(n_components=2)
-    Xreduced = pca.fit_transform(X, y=None)
-    return Xreduced
-
-def partitionSamples(X,Y):
-    minority_rows = []
-    majority_rows = []
-    for i,row in enumerate(Y):
-        if(row == 1):
-            minority_rows.append(i)
-        else:
-            majority_rows.append(i)
-    return (X[minority_rows],X[majority_rows])
-
-def chooseNeighbor(neighbors_index,numNeighbors,to_be_removed):
-    indices = neighbors_index[0]
-    index_list = indices.tolist()
-    index_list.remove(to_be_removed)
-    index_list_size = len(index_list)
-    if(index_list_size < numNeighbors):
-        raise Exception('the num of neighbors is less than the number of points in the cluster')
-   
-    elif(index_list_size == numNeighbors):    
-        return index_list
-    #remaining_rows = index_list.
-    #create indices minus currRow
-    else:
-        listofselectedneighbors = []
-        for i in range(numNeighbors):
-            selected_index = random.choice(index_list)
-            listofselectedneighbors.append(selected_index)
-            index_list.remove(selected_index)
-        return listofselectedneighbors
-
-# DK觉得：nearestneigh 是初选中选的邻居数，可以选稍微大一些？
-# numNeighbours是选择的邻居数目吧
-def createSyntheticSamples(X,Y,nearestneigh,numNeighbors,majoritylabel,minoritylabel): 
-    (Xminority,Xmajority) = partitionSamples(X,Y)
-    numFeatures = Xminority.shape[1]
-    Xreduced = pca(Xminority)  
-    numOrigMinority = len(Xminority)
-    #reducedMinoritykmeans = KMeans(init='k-means++',
-    #max_iter=500,verbose=False,tol=1e-4,k=numCentroids, n_init=5,
-    #n_neighbors=3).fit(Xreduced)
-    reducedNN = NearestNeighbors(nearestneigh, algorithm='auto')
-    reducedNN.fit(Xreduced)
-    #Xsyn=np.array([numOrigMinority,numNeighbors*numFeatures])
-    trylist = []
-    #LOOPHERE for EACH (minority) point...
-    for i,row in enumerate(Xreduced):
-        #Expected 2D array, got 1D array instead:
-        #array=[-1254.06656928   426.01329738].
-        #Reshape your data either using array.reshape(-1, 1) if your data has a single feature or array.reshape(1, -1) if it contains a single sample.
-        #neighbor_index = reducedNN.kneighbors(row, return_distance=False) 
-
-        neighbor_index = reducedNN.kneighbors(row.reshape(1,-1), return_distance=False) 
-
-        closestPoints = Xminority[neighbor_index]
-        #randomly choose one of the k nearest neighbors
-        chosenNeighborsIndex = chooseNeighbor(neighbor_index,numNeighbors,i)
-        chosenNeighbor = Xminority[chosenNeighborsIndex]
-        #Calculate linear combination:
-        #Take te difference between the orig minority sample and its selected
-        #neighbor, where X[1,] is the orig point
-        diff = Xminority[i,] - chosenNeighbor
-        #Multiply this difference by a number between 0 and 1
-        r = random.uniform(0,1)
-        #Add it back to te orig minority vector and viola this is the synthetic
-        #sample
-        syth_sample = Xminority[i,:] + r * diff
-        syth_sample2 = syth_sample.tolist()
-        trylist.append(syth_sample2)
-    Xsyn = np.asarray(trylist).reshape(numNeighbors * numOrigMinority,numFeatures)
-    maj_col = majoritylabel * np.ones([Xmajority.shape[0],1])
-    min_col = minoritylabel * np.ones([Xsyn.shape[0],1])
-    syth_Y = np.concatenate((maj_col,min_col),axis=0)
-    syth_X = np.concatenate((Xmajority,Xsyn),axis=0)
-    if(syth_X.shape[0] != syth_Y.shape[0]):
-        raise Exception("dim mismatch between features matrix and response matrix")
-    return (syth_X, syth_Y)
+from imblearn.over_sampling import SMOTE
 
 # Load data.
 print('Loading data...')
@@ -121,13 +35,14 @@ TRAIN_DATA_DIR = BASE_DIR + '/train'
 TEST_DATA_DIR = BASE_DIR + '/test'
 MAX_SEQUENCE_LENGTH = 256 #Max length of text samples
 MAX_NB_WORDS = 20000 #Max kinds of words
-EMBEDDING_DIM = 200  # The dimention of the matrix
+EMBEDDING_DIM = 300  # The dimention of the matrix
 #VALIDATION_SPLIT = 0.3
 
 # Index the word vectors.
 print('Indexing word vectors.')
 embeddings_index = {}
-f = open(os.path.join(GLOVE_DIR, 'glove.6B.200d.txt'), encoding='UTF-8')
+# Reduce the dim for debug.
+f = open(os.path.join(GLOVE_DIR, 'glove.6B.300d.txt'), encoding='UTF-8')
 for line in f:
     values = line.split()
     word = values[0]
@@ -178,26 +93,15 @@ print('Found %s unique tokens.' % len(word_index))
 data1 = pad_sequences(sequences1, maxlen=MAX_SEQUENCE_LENGTH)
 data2 = pad_sequences(sequences2, maxlen=MAX_SEQUENCE_LENGTH)
 
-# Add noise to the data1 and label1 directly
-# k is the number of centroids, num_neighbors is the number of neighbors per
-# each minority sample
-(data1,labels1) = createSyntheticSamples(data1,labels1,nearestneigh=10,
-                                     numNeighbors=5,majoritylabel=0,minoritylabel=1) 
+# Add noise using SMOTE algorithm. 
+sm=SMOTE(ratio='auto')
+data1,labels1=sm.fit_sample(data1,labels1)
 
 #Transform labels to 2-dim vectors
-num1=0
-num0=0
-for i in range (10000):
-    if (labels1[i]==1):
-        num1=num1+1
-    if (labels1[i]==0):
-        num0=num0+1
-
 labels1 = to_categorical(np.asarray(labels1))
 labels2 = to_categorical(np.asarray(labels2))
 
-#Add noised samples to make samples balanced
-
+## Version 1. Add noised samples to make samples balanced
 #indices=[]
 #for k in range(data1.shape[0]):
 #    if labels1[k][0]==0:
@@ -267,32 +171,25 @@ embedding_layer = Embedding(nb_words + 1,
                             weights=[embedding_matrix],
                             trainable=False)
 # Note that we set trainable = False so as to keep the embeddings fixed
+
 print('Training model.')
 # set parameters:
-# CNN
-# filters = 64 # The Output of CNN
-# LSTM
-lstm_output_size = 64  # 64 Characteristics
-# Full-connection
-hidden_dims = 128  
-
-batch_size = 32
-epochs = 10
+batch_size = 16
+epochs = 15
 
 model = Sequential()
 model.add(embedding_layer)
-model.add(Dropout(0.2))
-model.add(Conv1D(128, 5, padding='same',strides=1, activation='relu'))
+#model.add(Dropout(0.25))
+model.add(Conv1D(64, 5, padding='same', activation='relu'))
 model.add(MaxPooling1D(4))
-model.add(Conv1D(64, 4, padding='same',strides=1, activation='relu'))
+model.add(Conv1D(64, 4, padding='same', activation='relu'))
 model.add(MaxPooling1D(4))
-model.add(BatchNormalization())
-# model.add(Dropout(0.25))
-# model.add(Flatten())
-model.add(LSTM(lstm_output_size))
-# model.add(Bidirectional(LSTM(128)))
-# model.add(Dense(32, activation='relu'))
-model.add(Dropout(0.25))
+#model.add(Dropout(0.2))
+#model.add(Flatten())
+model.add(LSTM(64))
+#model.add(Bidirectional(LSTM(32)))
+#model.add(Dense(32, activation='relu'))
+model.add(Dropout(0.3))
 model.add(Dense(2, activation='softmax'))
 
 model.compile(loss='binary_crossentropy',
