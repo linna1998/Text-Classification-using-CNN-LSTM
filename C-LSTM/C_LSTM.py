@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import numpy as np
 from numpy.random import shuffle
+from numpy import argmax
 import random
 np.random.seed(1337)  # for reproducibility
 import numexpr as ne
@@ -33,6 +34,7 @@ BASE_DIR = 'L:/学术/大三/数据挖掘2017/作业二'
 GLOVE_DIR = BASE_DIR + '/glove.6B'  
 TRAIN_DATA_DIR = BASE_DIR + '/train'
 TEST_DATA_DIR = BASE_DIR + '/test'
+RESULT_DATA_DIR=BASE_DIR+'/result'
 MAX_SEQUENCE_LENGTH = 256 #Max length of text samples
 MAX_NB_WORDS = 20000 #Max kinds of words
 EMBEDDING_DIM = 300  # The dimention of the matrix
@@ -93,15 +95,15 @@ print('Found %s unique tokens.' % len(word_index))
 data1 = pad_sequences(sequences1, maxlen=MAX_SEQUENCE_LENGTH)
 data2 = pad_sequences(sequences2, maxlen=MAX_SEQUENCE_LENGTH)
 
-# Add noise using SMOTE algorithm. 
-sm=SMOTE(ratio='auto')
-data1,labels1=sm.fit_sample(data1,labels1)
+# Add noise using SMOTE algorithm.
+sm = SMOTE(ratio='auto')
+data1,labels1 = sm.fit_sample(data1,labels1)
 
 #Transform labels to 2-dim vectors
 labels1 = to_categorical(np.asarray(labels1))
 labels2 = to_categorical(np.asarray(labels2))
 
-## Version 1. Add noised samples to make samples balanced
+## Version 1.  Add noised samples to make samples balanced
 #indices=[]
 #for k in range(data1.shape[0]):
 #    if labels1[k][0]==0:
@@ -118,7 +120,6 @@ labels2 = to_categorical(np.asarray(labels2))
 #        np.random.uniform(low=0.9, high=1.1, size=(int(MAX_SEQUENCE_LENGTH)))
 #    data1 = np.concatenate((data1, temp))
 #    labels1 = np.concatenate((labels1, labels1[indices]))
-    
 for i in range(data1.shape[0]):
     for j in range(MAX_SEQUENCE_LENGTH):
         if data1[i][j] < 0:
@@ -171,7 +172,6 @@ embedding_layer = Embedding(nb_words + 1,
                             weights=[embedding_matrix],
                             trainable=False)
 # Note that we set trainable = False so as to keep the embeddings fixed
-
 print('Training model.')
 # set parameters:
 batch_size = 16
@@ -199,6 +199,19 @@ history = model.fit(x_train, y_train,
           batch_size=batch_size,
           epochs=epochs,
           validation_data=(x_test, y_test))
+
+predict_labels2=model.predict(x_test)
+f1 = open(os.path.join(RESULT_DATA_DIR, 'file1.txt'),'w+')
+f2 = open(os.path.join(RESULT_DATA_DIR, 'file2.txt'),'w+')
+for i in range(predict_labels2.shape[0]):
+    print(predict_labels2[i][1],file=f2)  # 为作者1的概率
+    if predict_labels2[i][0]>0.5:
+        print('0',file=f1)
+    else:
+        print('1',file=f1)
+
+f1.close()
+f2.close()
 
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
